@@ -1,0 +1,6 @@
+.DS_Store
+build/
+*.bin
+*.img
+*.o
+*.log

@@ -1,0 +1,7 @@
+label: dos
+unit: sectors
+label-id: 0xdeadbeef
+device: disk.img
+
+start=  2048, size=32768, type=1, bootable
+start= 34816, size=65536, type=83
