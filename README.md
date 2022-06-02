@@ -17,7 +17,7 @@ As long as you have the above utilities installed, edit the makefile to fit what
 
 Use ```make``` to build a bootable disk image.  
 Use ```make test``` to make and boot the image in a VM.  
-Use ```make debug``` to open the image in a VM, and connect GDB to it in ASM layout.
+Use ```make debug``` to open the image in a VM, and connect GDB to it in ASM layout.  
 Use ```make clean``` to remove non-source files in the directory.
 _____________
 # Other Info

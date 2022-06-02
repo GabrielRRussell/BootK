@@ -32,39 +32,24 @@
 dap:
                   db 10h ; Size of Packet, 16B
                   db 0
-dap_sector_count: dw 28 ; Number of Sectors to Read
+dap_sector_count: dw 0 ; Number of Sectors to Read
 dap_offset:       dw 0x0000
 dap_segment:      dw 0x0000
-dap_lba:          dq 0
+dap_lba_lo:       dd 0 ; I briefly changed this to a qword. Moved it back since
+dap_lba_hi:       dd 0 ; only the low 48 bits are read.
 ;-------------------------------------------------------------------------------
 
-; @TODO Add a function to verify extended int 13h interrupts are accessible
-; Should have a failure routine if this doesn't work other than just hoping
-; that it does. This is annoying. Shame on 18 year old me.
-
-; @TODO Change this section to accept registers as inputs.
-; Honestly it's kinda clunky having to edit the DAP, annoying as well.
-; If we load multiple sectors it also starts to waste code space.
-
+; readSectorsLBA: Read Sectors using the int 13h extension for LBA operations
+; Will return AH = 0 on success, non-zero means failure.
+;  EAX: LBA to start reading from
+;   BX: Offset to load the sectors to
+;   CX: How many sectors to read
+;   DL: Drive Number
 readSectorsLBA:
-	pusha
-	mov ah, 42h ; EXT Read Sectors
-	mov si, dap
-	int 13h ; Read Sectors
-	mov ah, 0xE
-	jc .error
-.success:
-	mov al, '*'
-	int 0x10
-	popa
+  mov [dap_lba_lo], eax       ; Starting LBA to read from
+  mov [dap_offset], bx        ; Store the offset to load the sectors at
+  mov [dap_sector_count], cx  ; How many sectors to read
+	mov ah, 42h                 ; EXT Read Sectors
+	mov si, dap                 ; Data Segment already set to 0x0000
+	int 13h                     ; Read Sectors
 	ret
-.error:
-
-  ; @TODO This is honestly kinda unacceptable. Should probably print a more
-  ; specific message. I've changed it from "!" to "<" so that it's less generic
-
-	; Carry Flag Set
-	mov al, '<'
-	int 0x10
-	cli
-	jmp $ ; Hang Here

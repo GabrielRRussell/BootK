@@ -33,11 +33,8 @@
 ; 0x7C00 - 0x7DFF : Bootsector (512b) <-- YOU ARE HERE
 ; 0x7E00 - 0x7FFF : Free Memory (480.5Kb) <-- Setting up Stack Here
 
-; This Stage 0 Bootloader expects a few things. First of all, it's loaded via
-; HDD. Second, that HDD is formatted with MBR, not GPT. Third, there exists a
-; NOT-LOGICAL EXT2 partition on the disk that has the operating system contents.
-; Fourth, the system must support Fast A20 setup, and LBA Disk Load BIOS calls.
-; Try not to use this on anything ancient. As stated above, no warranty.
+; This code expects a MBR formatted drive, and looks for an active partition,
+; then loads the VMBR of that partition to 0x0000:0x7C00 and jumps to it.
 
 ; Set our origin to 0x0600 since that's where our copied MBR will go.
 ; BIOS puts us in Real Mode (16 Bits), so we tell the assembler
@@ -70,57 +67,78 @@ copyMBR:
 start:
   ; Now that we've moved back over to 0x0600, we can resume interrupts
   sti
-  mov [var_boot_drive], dl
+  mov byte [var_boot_drive], dl
+
+findPartition:
+  ; Test Extended int 13h support
+  ; RETURNS:
+  ;   CF: Clear on Present
+  ;   AH: Error Code / Version
+  ;   BX: 0xAA55
+  ;   CX: Interface support bitmask. We really don't care about this.
+  mov ah, 0x41
+  mov bx, 0x55AA
+  mov dl, [var_boot_drive]
+  int 13h
+  jc .noSupport ; If CF is set, we're smoked. Otherwise, carry on ;)
 
   ; There are four partition table entries we need to check
   mov ecx, 4
-  mov ebx, partition_entry_1
-findPartition:
+  mov edx, partition_entry_1
+.loop:
   ; Check the active partition value. If it isn't active, go to the next one.
-  mov al, [ebx]
+  mov al, [edx]
   test al, 0x80
-  jnz .exit
-  add ebx, 16
+  jnz .exit ; Found it!
+  add edx, 16
   dec cx
-  jnz findPartition
+  jnz .loop
   ; Didn't find any active partitions, so we'll need to abort.
-  jmp .error
-
-.error:
-  mov si, str_no_active_error
-  call printString
-  cli
-  hlt
+  jmp .noActivePartition
 
 .exit:
 
-  ;@TODO Edit the DAP section in "disk.inc", Section noted there
+  ; Store pointer to the active partition
+  mov dword [var_active_partition_entry], edx
 
   ; Store a PTR to the active partition entry, and grab
   ; the starting LBA sector on that partition entry
-  mov dword [var_active_partition_entry], ebx
-  mov ebx, dword [ebx+8]
-  mov [dap_lba], ebx
-
-  ; We're going to load one sector to 0x0000:0x7C00, our original location
-  xor eax,eax
-  mov word [dap_segment], ax
-
-  inc ax
-  mov word [dap_sector_count], 0x01
-
-  mov ax, 0x7C00
-  mov word [dap_offset], ax
+  mov edx, dword [var_active_partition_entry]
+  mov eax, dword [edx+8]
+  mov  bx, 0x7C00                 ; We're loading to 0x0000:0x7C00
+  mov  cx, 1                      ; Loading one sector
+  mov  dl, byte [var_boot_drive]  ; Probably 0x80, hard drive
 
   ; Okay, we're finally reading the data.
   call readSectorsLBA
+  test ah, ah      ; Test for non-zero AH, failure if that happened
+  jnz .readError
+  jmp .readSuccess ; Success!
 
+.noActivePartition:
+  mov si, str_no_active_error
+  call printString
+  jmp .hang
+.noSupport:
+  mov si, str_no_support_error
+  call printString
+  jmp .hang
+.readError:
+  mov si, str_disk_read_error
+  call printString
+  jmp .hang
+.notBootableError:
+  mov si, str_disk_no_boot_error
+  call printString
+.hang:
+  cli
+  hlt
+
+.readSuccess:
   ; We need to make sure this is a bootable partition, check the boot sig
   ; The correct value should be 0xAA55
   cmp word [const_new_boot_signature], 0xAA55
-
-  ; @TODO Change this to print a different error sequence
-  jne .error
+  jne .notBootableError
 
   ; Pass over the partition table entry, and the boot drive to the next stage
   mov si, word [var_active_partition_entry]
@@ -137,9 +155,11 @@ findPartition:
 const_new_boot_signature: equ 0x7C00 + 510 ; PTR to new mbr signature 0xAA55
 var_boot_drive:            db 0            ; We need to keep this for the kernel
 var_active_partition_entry dd 0            ; PTR to active partition entry
-str_no_fs_error:           db "!FS", 0     ; ERROR: No EXT2 Partitions Found
-str_no_active_error:       db "!80", 0     ; ERROR: No Active Partitions
-str_good:                  db ":)", 0      ; No Issues Here
+str_no_active_error:       db "ERROR! No active partitions!", 0
+str_no_support_error:      db "ERROR! BIOS doesn't support extended int 10h", 0
+str_disk_read_error:       db "ERROR! Disk Read Error!", 0
+str_disk_no_boot_error:    db "ERROR! Disk not bootable!", 0
+str_good:                  db "Stage 0 Finished!\n", 0
 
 ; We don't care about anything before the partition entries
 ; Also acts as a guard against accidentally overwriting the partition entries
