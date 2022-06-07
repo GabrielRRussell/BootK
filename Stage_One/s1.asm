@@ -59,6 +59,11 @@ start:
 
   ; Active partition entry pointed to by SI
   ; Store the starting LBA of this partition from the active partition entry
+
+  ; @TODO - Do I really want to keep it this way?
+  ; Might be better to read it from the FAT table that way this could be
+  ; compatible with other chainloaders. SI pointing to the partition entry isn't
+  ; guaranteed, so it might not be compatible with other chainloaders.
   mov eax, dword [si+8]
   mov [var_partition_lba], eax
 
@@ -102,8 +107,8 @@ start:
 
 findEntry:
   call compareString
-  jz .next
-  jmp .found
+  jz .next ; Nope, not it.
+  jmp .found ; Sweet, it worked!
 .next:
   dec dx ; Have we run out of entries?
   test dx, 0
@@ -116,8 +121,34 @@ findEntry:
   cli
   hlt
 .found:
-  mov si, str_good
-  call printString
+
+loadFat:
+  ; Entry is stored at 0x0000:SI, grab the cluster number
+  xor eax, eax
+  mov ax,  word [si+dir_first_cluster_lo]
+
+  ; Calculate offset of FAT to load
+  ; AX = Quotient = Offset Sector to Load
+  ; DX = Remainder = Cluster Offset to load inside sector
+  mov bx, 512
+  div bx
+
+  ; Add LBA of first FAT to eax
+  add eax, dword [bpb_hidden_sectors]
+  add eax,  word [bpb_reserved_sectors]
+
+  ; We'll load this to 0x0000:0x0500
+  mov bx, 0x0500
+
+  ; Load only one sector from boot drive.
+  mov cx, 1
+  mov dl, byte [var_boot_drive]
+
+  ; Load the data! A sector from the FAT should be located at 0x0500 now!
+  call readSectorsLBA
+
+  ; Continue working on this later
+
   cli
   hlt
 
