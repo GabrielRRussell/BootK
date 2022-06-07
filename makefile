@@ -41,8 +41,8 @@ build/s0.bin: Stage_Zero/s0.asm
 build/s1.bin: Stage_One/s1.asm
 	nasm -f bin $< -o $@
 
-build/s2.bin:
-	touch build/s2.bin
+build/s2.bin: Stage_Two/s2.asm
+	nasm -f bin $< -o $@
 
 # Build the FAT16 System Partition, and put a text file on it for testing
 build/system.part: build/s1.bin build/s2.bin

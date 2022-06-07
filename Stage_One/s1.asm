@@ -135,7 +135,7 @@ loadFat:
 
   ; Add LBA of first FAT to eax
   add eax, dword [bpb_hidden_sectors]
-  add eax,  word [bpb_reserved_sectors]
+  add  ax,  word [bpb_reserved_sectors]
 
   ; We'll load this to 0x0000:0x0500
   mov bx, 0x0500
