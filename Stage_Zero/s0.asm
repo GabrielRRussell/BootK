@@ -31,7 +31,7 @@
 ; 0x0000 - 0x03FF : IVT (1Kb) <-- Important later on, not right now
 ; 0x0500 - 0x7BFF : Free Memory (~29.7Kb) <-- We'll copy MBR here at 0x0600
 ; 0x7C00 - 0x7DFF : Bootsector (512b) <-- YOU ARE HERE
-; 0x7E00 - 0x7FFF : Free Memory (480.5Kb) <-- Setting up Stack Here
+; 0x7E00 - 0x0007.FFFF : Free Memory (480.5Kb) <-- Setting up Stack Here
 
 ; This code expects a MBR formatted drive, and looks for an active partition,
 ; then loads the VMBR of that partition to 0x0000:0x7C00 and jumps to it.
@@ -97,13 +97,9 @@ findPartition:
   jmp .noActivePartition
 
 .exit:
-
-  ; Store pointer to the active partition
-  mov dword [var_active_partition_entry], edx
-
   ; Store a PTR to the active partition entry, and grab
   ; the starting LBA sector on that partition entry
-  mov edx, dword [var_active_partition_entry]
+  mov dword [var_active_partition_entry], edx
   mov eax, dword [edx+8]
   mov  bx, 0x7C00                 ; We're loading to 0x0000:0x7C00
   mov  cx, 1                      ; Loading one sector
@@ -140,6 +136,9 @@ findPartition:
   cmp word [const_new_boot_signature], 0xAA55
   jne .notBootableError
 
+  mov si, str_good
+  call printString
+
   ; Pass over the partition table entry, and the boot drive to the next stage
   mov si, word [var_active_partition_entry]
   mov dl, byte [var_boot_drive]
@@ -159,7 +158,7 @@ str_no_active_error:       db "ERROR! No active partitions!", 0
 str_no_support_error:      db "ERROR! BIOS doesn't support extended int 10h", 0
 str_disk_read_error:       db "ERROR! Disk Read Error!", 0
 str_disk_no_boot_error:    db "ERROR! Disk not bootable!", 0
-str_good:                  db "Stage 0 Finished!\n", 0
+str_good:                  db "Stage 0 Finished!", 0xA, 0xD 0
 
 ; We don't care about anything before the partition entries
 ; Also acts as a guard against accidentally overwriting the partition entries
