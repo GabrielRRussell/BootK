@@ -22,7 +22,7 @@ Use ```make clean``` to remove non-source files in the directory.
 _____________
 # Other Info
 BootK is a 3 Stage Loader by default for KoiOS's sake. It doesn't have to be this way by default, but we'll cover default use case first. First things first: building the image will generate a 128MB disk image, that is formatted as MBR. There will be two partitions:
-1. FAT12, 16MB - This is used for the First/Second Stage (Marked Active 0x80)
+1. FAT16, 16MB - This is used for the First/Second Stage (Marked Active 0x80)
 2. EXT2, 32MB - This is used for the Operating System.
 
 You are free to extend the EXT2 partition, but do not edit the FAT12 partition. The FAT12 partition is a system partition used to locate and load a configuration file for the operating system, which is located on it's own partition.
@@ -33,8 +33,8 @@ BootK is not quite yet ready for booting other Operating Systems. It will be in 
 _____________
 # Credits and Thanks
 Software, Code, Documentation:
-- [osdev.org](osdev.org) Forum/Wiki, and it's users
-- Everyone on [/r/OSDev on Reddit](reddit.com/r/osdev)
+- [osdev.org](https://osdev.org) Forum/Wiki, and it's users
+- Everyone on [/r/OSDev on Reddit](https://reddit.com/r/osdev)
 - [Jonas 'Sortie' Termansen!](https://maxsi.org/) For your kind words and help :)
 - [William Atkinson](https://devwillatkinson.com/), for helping me stay motivated during the original project
 - Mel, for drawing the art used for BootK and KoiOS! [Twitter,](https://twitter.com/Little_Ly_Arts) [Tumblr](https://littlelyarts.tumblr.com/)
