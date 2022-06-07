@@ -58,6 +58,18 @@ printRegister:
   ret
 
 ;-------------------------------------------------------------------------------
+; Compare Two Strings located at SI, DI
+; Bytes to scan in CX (THIS DOESN'T WORK WITH C-STRINGS)
+; ZF Clear if they don't match up
+compareString:
+  push si
+  push di
+  cld
+  repe cmpsb
+  pop di
+  pop si
+  ret
+;-------------------------------------------------------------------------------
 ; Print String located at SI
 printString:
   pusha

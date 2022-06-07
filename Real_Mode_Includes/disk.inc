@@ -23,9 +23,6 @@
 ;OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ;SOFTWARE.
 
-; This is older code back from the first revision of KoiOS when I was in High
-; School. I see no reason to change it.
-
 [bits 16]
 ;-------------------------------------------------------------------------------
 ; DISK ADDRESS PACKET
