@@ -91,12 +91,14 @@ start:
   add ax, word [bpb_bytes_per_sector]
   dec ax
   mov bx, word [bpb_bytes_per_sector]
+  xor edx, edx
   div bx
 
   ; Set values for load function
   ; Load to 0x0000:0x8000
   xchg eax, ecx
   mov bx, 0x8000
+  mov dl, [var_boot_drive]
   call readSectorsLBA
 
   ; Compare the value in the entry until we find it
@@ -112,7 +114,7 @@ findEntry:
 .next:
   dec dx ; Have we run out of entries?
   test dx, 0
-  jz .fail ; Didn't find it
+  jnz .fail ; Didn't find it
   add si, 32 ; Go to the next entry
   jmp findEntry
 .fail:
@@ -127,9 +129,11 @@ loadFat:
   xor eax, eax
   mov ax,  word [si+dir_first_cluster_lo]
 
+.loop:
   ; Calculate offset of FAT to load
   ; AX = Quotient = Offset Sector to Load
   ; DX = Remainder = Cluster Offset to load inside sector
+  xor dx, dx
   mov bx, 512
   div bx
 
@@ -147,10 +151,18 @@ loadFat:
   ; Load the data! A sector from the FAT should be located at 0x0500 now!
   call readSectorsLBA
 
-  ; Continue working on this later
+  ; Get the offset to the cluster
+  mov ax, dx
+  mov cx, 2
+  mul cx
+  add ax, 0x500
+
+  mov dx, ax
+  call printRegister
 
   cli
   hlt
+
 
 ; Includes
 %include "Real_Mode_Includes/string.inc"
@@ -161,7 +173,7 @@ var_boot_drive:     db 0
 var_partition_lba:  dd 0
 str_s2_filename:    db "S2      BIN", 0
 str_good:           db ":)", 0
-str_error:          db ":(", 0
+str_error:          db ":( disk error", 0
 
 times 510 - ($-$$) db 0
 dw 0xAA55

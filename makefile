@@ -3,8 +3,12 @@
 .PHONY: all run
 
 # This is the virtual machine that will be ran when you use test/debug!!!
-# By default this is a 64 Bit VM, change as needed!
-VM := qemu-system-x86_64
+# By default this is a i386 Bit VM, change as needed!
+# This used to be an x64 vm, but it caused GDB to lose it's mind
+# For some reason GDB wasn't recognizing the i8086 arch when using a 64bit VM
+# So for now, I've set it to i386. BootK doesn't enter long mode as of now
+# anyways, so this is fine. Change it if you want to.
+VM := qemu-system-i386
 GDB := gdb
 
 
