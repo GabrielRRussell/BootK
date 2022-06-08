@@ -109,7 +109,7 @@ start:
 
 findEntry:
   call compareString
-  jz .next ; Nope, not it.
+  jne .next ; Nope, not it.
   jmp .found ; Sweet, it worked!
 .next:
   dec dx ; Have we run out of entries?
@@ -123,12 +123,9 @@ findEntry:
   cli
   hlt
 .found:
-
-loadFat:
   ; Entry is stored at 0x0000:SI, grab the cluster number
   xor eax, eax
   mov ax,  word [si+dir_first_cluster_lo]
-
 .loop:
   ; Calculate offset of FAT to load
   ; AX = Quotient = Offset Sector to Load
@@ -144,12 +141,17 @@ loadFat:
   ; We'll load this to 0x0000:0x0500
   mov bx, 0x0500
 
+  ; Gotta save DX since that's our cluster number
+  push dx
+
   ; Load only one sector from boot drive.
   mov cx, 1
   mov dl, byte [var_boot_drive]
 
   ; Load the data! A sector from the FAT should be located at 0x0500 now!
   call readSectorsLBA
+
+  pop dx
 
   ; Get the offset to the cluster
   mov ax, dx
