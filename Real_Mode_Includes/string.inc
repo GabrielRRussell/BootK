@@ -62,12 +62,10 @@ printRegister:
 ; Bytes to scan in CX (THIS DOESN'T WORK WITH C-STRINGS)
 ; ZF Clear if they don't match up
 compareString:
-  push si
-  push di
+  pusha
   cld
   repe cmpsb
-  pop di
-  pop si
+  popa
   ret
 ;-------------------------------------------------------------------------------
 ; Print String located at SI
