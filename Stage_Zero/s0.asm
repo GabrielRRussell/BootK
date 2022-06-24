@@ -29,16 +29,16 @@
 ; variable_and_data_labels are snake_case
 
 ; 0x0000 - 0x03FF : IVT (1Kb) <-- Important later on, not right now
-; 0x0500 - 0x7BFF : Free Memory (~29.7Kb) <-- We'll copy MBR here at 0x0600
+; 0x0500 - 0x7BFF : Free Memory (~29.7Kb) <-- Stack goes here
 ; 0x7C00 - 0x7DFF : Bootsector (512b) <-- YOU ARE HERE
-; 0x7E00 - 0x0007.FFFF : Free Memory (480.5Kb) <-- Setting up Stack Here
+; 0x7E00 - 0x0007.FFFF : Free Memory (480.5Kb) <-- Loading Stage 1 here
 
-; This code expects a MBR formatted drive, and looks for an active partition,
-; then loads the VMBR of that partition to 0x0000:0x7C00 and jumps to it.
+; This code expects a GPT formatted drive, and looks for the RAW partition,
+; Loads this partition to 0x8000, and then jumps to it.
 
-; Set our origin to 0x0600 since that's where our copied MBR will go.
+; Set our origin to 0x7C00 since that's where we're loaded to
 ; BIOS puts us in Real Mode (16 Bits), so we tell the assembler
-[org 0x0600]
+[org 0x7C00]
 [bits 16]
 
 setup:
@@ -51,114 +51,78 @@ setup:
   mov es, ax
   mov ss, ax
 
-  ; Properly set up the stack at free memory 0x8000, reference chart above
-  mov bp, 0x8000
+  ; Properly set up the stack at free memory 0x7000, reference chart above
+  mov bp, 0x7000
   mov sp, bp
 
-; Copy the MBR (512 Bytes) to 0x0600, and jump to it.
-; This way we can copy the VMBR of our partition to 0x7C00 and execute it.
-copyMBR:
-  mov cx, 0x0200
-  mov si, 0x7C00
-  mov di, 0x0600
-  rep movsb
+  ; Save Boot Drive to our variable
+  mov [var_boot_drive], dl
+
+  ; Should be safe to re-enable interrupts now
+  sti
+
+  ; Set Code Segment to 0
   jmp 0:start
 
 start:
-  ; Now that we've moved back over to 0x0600, we can resume interrupts
-  sti
-  mov byte [var_boot_drive], dl
-
-findPartition:
-  ; Test Extended int 13h support
-  ; RETURNS:
-  ;   CF: Clear on Present
-  ;   AH: Error Code / Version
-  ;   BX: 0xAA55
-  ;   CX: Interface support bitmask. We really don't care about this.
-  mov ah, 0x41
-  mov bx, 0x55AA
-  mov dl, [var_boot_drive]
-  int 13h
-  jc .noSupport ; If CF is set, we're smoked. Otherwise, carry on ;)
-
-  ; There are four partition table entries we need to check
-  mov ecx, 4
-  mov edx, partition_entry_1
-.loop:
-  ; Check the active partition value. If it isn't active, go to the next one.
-  mov al, [edx]
-  test al, 0x80
-  jnz .exit ; Found it!
-  add edx, 16
-  dec cx
-  jnz .loop
-  ; Didn't find any active partitions, so we'll need to abort.
-  jmp .noActivePartition
-
-.exit:
-  ; Store a PTR to the active partition entry, and grab
-  ; the starting LBA sector on that partition entry
-  mov dword [var_active_partition_entry], edx
-  mov eax, dword [edx+8]
-  mov  bx, 0x7C00                 ; We're loading to 0x0000:0x7C00
-  mov  cx, 1                      ; Loading one sector
-  mov  dl, byte [var_boot_drive]  ; Probably 0x80, hard drive
-
-  ; Okay, we're finally reading the data.
+  ; Loading LBA 1 (Partition Table Header) to 0x0000:0x0500
+  mov eax, 1
+  mov bx, 0x0500
+  mov cx, 1
+  mov dl, byte [var_boot_drive]
   call readSectorsLBA
-  test ah, ah      ; Test for non-zero AH, failure if that happened
-  jnz .readError
-  jmp .readSuccess ; Success!
+  jc diskReadError
 
-.noActivePartition:
-  mov si, str_no_active_error
-  call printString
-  jmp .hang
-.noSupport:
-  mov si, str_no_support_error
-  call printString
-  jmp .hang
-.readError:
-  mov si, str_disk_read_error
-  call printString
-  jmp .hang
-.notBootableError:
-  mov si, str_disk_no_boot_error
-  call printString
-.hang:
+  ; Okay, sector is loaded. Let's make sure it's actually a GPT disk.
+  ; Verify the signature. 8 Bytes
+  mov si, 0x0500
+  mov di, const_gpt_signature
+  mov cx, 8
+  call compareString
+  jne diskFormatError
+
+  ; Cool, it's a GPT disk. Good to know. Let's load the Partition Entries
+  ; Each Entry is 128 Bytes large, so we can fit 4 into a single sector.
+  ; We're going to take a shortcut and assume it's inside the first 4 sectors
+  ; @TODO: Change this to something more efficient once we get past POC stage.
+
+  mov ax, [0x0548]
+  mov bx, 0x0500
+  mov cx, 4
+  mov dl, byte [var_boot_drive]
+  call readSectorsLBA
+  jc diskReadError
+
+  ; 2KB Loaded to 0x0500, read the first 16 sectors
+  ; Placeholder
   cli
   hlt
 
-.readSuccess:
-  ; We need to make sure this is a bootable partition, check the boot sig
-  ; The correct value should be 0xAA55
-  cmp word [const_new_boot_signature], 0xAA55
-  jne .notBootableError
-
-  mov si, str_good
+diskReadError:
+  mov si, str_disk_read_error
   call printString
-
-  ; Pass over the partition table entry, and the boot drive to the next stage
-  mov si, word [var_active_partition_entry]
-  mov dl, byte [var_boot_drive]
-
-  ; Blast Off!
-  jmp 0x7C00
+  xchg ax, dx
+  call printRegister
+  jmp halt
+diskFormatError:
+  mov si, str_disk_format_error
+  call printString
+  jmp halt
+halt:
+  cli
+  hlt
 
 ; Include various other routines we need
 %include "Real_Mode_Includes/string.inc"
 %include "Real_Mode_Includes/disk.inc"
 
 ; Strings, Variables, Constants
-const_new_boot_signature: equ 0x7C00 + 510 ; PTR to new mbr signature 0xAA55
-var_boot_drive:            db 0            ; We need to keep this for the kernel
-var_active_partition_entry dd 0            ; PTR to active partition entry
-str_no_active_error:       db "ERROR! No active partitions!", 0
-str_no_support_error:      db "ERROR! BIOS doesn't support extended int 10h", 0
-str_disk_read_error:       db "ERROR! Disk Read Error!", 0
-str_disk_no_boot_error:    db "ERROR! Disk not bootable!", 0
-str_good:                  db "Stage 0 Finished!", 0xA, 0xD 0
+var_boot_drive:             db 0 ; We need to keep this for the kernel
+const_gpt_signature:        db 0x45, 0x46, 0x49, 0x20, 0x50, 0x41, 0x52, 0x54
+str_no_support_error:       db "ERROR! BIOS doesn't support extended int 10h", 0
+str_disk_read_error:        db "ERROR! Disk Read Error.", 0
+str_disk_format_error:      db "ERROR! Disk not GPT format.", 0
+str_good:                   db "Stage 0 Finished!", 0xA, 0xD 0
 
 ; We don't care about anything before the partition entries
 ; Also acts as a guard against accidentally overwriting the partition entries

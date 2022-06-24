@@ -29,7 +29,7 @@
 ; variable_and_data_labels are snake_case
 
 [bits 16]
-[org 0x7C00] ; change this
+[org 0xA000] ; change this
 
 ; this is a dummy stub file for now
 ; this won't do anything

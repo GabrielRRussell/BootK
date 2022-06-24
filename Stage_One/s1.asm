@@ -125,98 +125,21 @@ findEntry:
 .found:
   ; Entry is stored at 0x0000:SI, grab the cluster number
   xor eax, eax
+  xor ebx, ebx
+  ; Need to calculate bytes per cluster to add to DI each loop
+  ; We'll keep this in DX
+  mov ax, word [bpb_bytes_per_sector]
+  mov bl, byte [bpb_sectors_per_cluster]
+  mul bx
+  xchg ax, dx
+
+  ; Get the first cluster number
+  xor eax, eax
   mov ax,  word [si+dir_first_cluster_lo]
+  ; Consolidate into one push
   mov di, 0xA000
+  push 0xA000
 
-loadFile:
-  call loadCluster
-  call loadFatSectorFromCluster
-  mov ax, word [var_cluster_offset]
-  mov bl, 2
-  mul bl
-  mov cx, ax
-  mov ax, word [eax+0x500]
-  cmp ax, 0xFFF7
-  je diskerror
-  jg .end
-  jmp loadFile
-.end:
-  ; idk yet, not done
-  mov si, str_good
-  call printString
-  cli
-  hlt
-
-; loadFatSectorFromCluster:
-; This routine loads a single sector from the FAT to 0x0000:0x0500 based
-; on the cluster number provided. The formula is
-; (Cluster Number / Sectors Per Cluster) + Reserved Sectors + Hidden Sectors
-; AX = Cluster Number
-; Current Cluster Offset is loaded to "[var_cluster_offset]"
-loadFatSectorFromCluster:
-  pusha
-  ; Calculate LBA Offset from Start of FAT
-  xor edx, edx
-  xor ecx, ecx
-  mov  cl, byte [bpb_sectors_per_cluster]
-  div  cx
-
-  ; Save our Cluster Offset
-  mov word [var_cluster_offset], dx
-
-  ; Calculate offset to FAT, add it to EAX
-  add  ax,  word [bpb_reserved_sectors]
-  add eax, dword [bpb_hidden_sectors]
-
-  ; Loading one sector from our Boot Drive to 0x0000:0x0500
-  mov cx, 1
-  mov bx, 0x0500
-  mov dl, [var_boot_drive]
-
-  call readSectorsLBA
-  popa
-  test ah, 0
-  jnz diskerror
-  ret
-
-; loadCluster: This routine loads cluster offset AX to the address 0x0000:DI
-; This method does not error check the cluster number. Do that first!
-loadCluster:
-  pusha
-
-  ; Clear values first
-  xor cx,cx
-  xor bx,bx
-  xor dx,dx
-
-  mov cl, byte [bpb_sectors_per_cluster]
-  mul cl
-  xchg eax, edx
-
-  ; Find the LBA just past both FAT copies.
-  mov ax, word [bpb_sectors_per_fat]
-  mov bl, byte [bpb_total_fats]
-  mul bl
-  add eax, dword [bpb_hidden_sectors]
-  add  ax,  word [bpb_reserved_sectors]
-
-  ; Add the offset of our cluster to EAX
-  add eax, edx
-
-  ; Loading cx sectors to 0x0000:DI
-  mov bx, di
-  mov dl, [var_boot_drive]
-  call readSectorsLBA
-  test ah, 0
-  jnz diskerror
-  popa
-  ret
-
-diskerror:
-  mov si, str_error
-  call printString
-  cli
-  hlt
 
 ; Includes
 %include "Real_Mode_Includes/string.inc"
@@ -227,8 +150,8 @@ var_boot_drive:     db 0
 var_partition_lba:  dd 0
 var_cluster_offset: dw 0
 str_s2_filename:    db "S2      BIN", 0
-str_error:          db "!dc", 0
-str_good:           db "Hmm...", 0
+str_error:          db "D", 0
+str_good:           db "*", 0
 
 ; Boot Signature
 times 510 - ($-$$) db 0
