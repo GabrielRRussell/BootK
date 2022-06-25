@@ -67,7 +67,8 @@ test: build/disk.img
 debug: build/disk.img
 	${VM} -hda $< -s -S \
 	& ${GDB} -ex "target remote localhost:1234" \
-					 -ex "layout asm" \
+					 -ex "layout regs" \
+					 -ex "layout next" \
 					 -ex "set architecture i8086" \
 					 -ex "break *0x7C00" \
 					 -ex "c"
