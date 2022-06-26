@@ -45,11 +45,8 @@ setup:
   mov bp, stack
   mov sp, bp
 
+  ; Set our code pointer to 0
   jmp 0:start
-
-; We reserve 1KB for the stack. Temporary bodge to test if our stage is actually
-; loaded properly, we'll put code right after this.
-stack: times 1024 db 0
 
 start:
   mov si, str_test
@@ -57,13 +54,19 @@ start:
   cli
   hlt
 
+
+; Stack grows downwards
+; We'll set up 512 bytes for our stack, we don't really need too much.
+end_of_stack: times 511 db 0
+stack: db 0
+
 ; Includes
 %include "Real_Mode_Includes/string.inc"
 %include "Real_Mode_Includes/disk.inc"
 %include "Stage_One/fsfat.inc"
 
 ; Constants, Strings, Variables
-str_s2_filename:    db "S2      BIN", 0
+str_conf_filename:  db "CONFIG  BIN", 0
 str_test:           db "This is a test string! You should see me right now!", 0
 str_good:           db "*", 0
 
