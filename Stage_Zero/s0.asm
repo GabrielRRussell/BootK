@@ -98,10 +98,10 @@ findPartition:
   ; We loaded our sectors to 0x0500
   ; We only need to look through the first 16 entries until we find it.
   mov bx, 16
-  mov di, 0x0500
+  mov si, 0x0500
 .loop:
   ; Compare the identifier to what we're looking for.
-  mov si, const_stage1_signature
+  mov di, const_stage1_signature
   mov cx, 16
   call compareString
   je .exit
@@ -109,7 +109,7 @@ findPartition:
   dec bx
   jz .error
   ; Load the next entry, every 128 Bytes
-  add di, 0x80
+  add si, 0x80
   jmp .loop
 .error:
   mov si, str_disk_missing_part
@@ -117,6 +117,17 @@ findPartition:
   jmp halt
 .exit:
   ; Identifier matched up, so we'll load it.
+  ; @TODO: This is lazy. Change it to use the full 8 Bytes later
+  mov eax, dword [si+0x20]
+  mov ecx, dword [si+0x28]
+  sub ecx, eax
+  mov bx, 0x8000
+  mov dl, [var_boot_drive]
+
+  ; Read from the disk!
+  call readSectorsLBA
+  jc diskReadError
+
   mov si, str_good
   call printString
   jmp halt
