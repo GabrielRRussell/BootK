@@ -34,7 +34,6 @@
 [bits 16]
 
 setup:
-
   ; Set Data,Extra,Stack Segment Registers to 0
   xor ax, ax
   mov ds, ax
@@ -45,12 +44,59 @@ setup:
   mov bp, stack
   mov sp, bp
 
-  ; Set our code pointer to 0
+  ; Save drive number, we should still have it.
+  mov byte [var_boot_drive], dl
+
+  ; Set our code segment to 0
   jmp 0:start
 
 start:
-  mov si, str_test
+  ; First 16 Partition Entries are still loaded at 0x0000:0x0500
+  mov si, 0x0500
+  mov di, var_esp_sig
+  mov dx, 16
+findPartition:
+  ; Try to find the ESP partition
+  mov cx, 16
+  call compareString
+  je loadESPMBR
+
+  ; Didn't find it, did we run out?
+  dec dx
+  jz .error
+
+  ; Try the next one.
+  add si, 0x80
+  jmp findPartition
+
+; ESP doesn't exist in the first 16 partitions
+.error:
+  mov si, str_error_no_esp
   call printString
+  jmp hang
+
+; We found it!
+loadESPMBR:
+
+    ; Load the first sector of the partition to 0x9000, right above this code.
+  mov eax, dword [si+0x20]
+  mov cx, 1
+  mov bx, 0x9000
+  mov dl, byte [var_boot_drive]
+  call readSectorsLBA
+  jc .error
+  jmp loadESPRootDir
+.error:
+  mov si, str_disk_read_error
+  call printString
+  xchg ax, dx
+  call printRegister
+  jmp hang
+
+loadESPRootDir:
+
+
+hang:
   cli
   hlt
 
@@ -66,9 +112,16 @@ stack: db 0
 %include "Stage_One/fsfat.inc"
 
 ; Constants, Strings, Variables
-str_conf_filename:  db "CONFIG  BIN", 0
-str_test:           db "This is a test string! You should see me right now!", 0
+; This is split into two lines to make it easier to read.
+var_boot_drive:     db 0
+var_esp_sig:        db 0x28, 0x73, 0x2a, 0xc1, 0x1f, 0xf8, 0xd2, 0x11
+                    db 0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b
+str_folder_name:    db "BootK      "
+str_conf_filename:  db "CONFIG  BIN"
+str_found_esp:      db "Found the ESP.", 0xA, 0xD, 0
 str_good:           db "*", 0
+str_disk_read_error:db "Disk Read Error. ", 0
+str_error_no_esp:   db "There is no FAT32 ESP partition found on disk.", 0
 
 ; File Size Guard, can't get larger than 4KB
 times 4096 - ($-$$) db 0

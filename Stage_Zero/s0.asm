@@ -122,7 +122,7 @@ findPartition:
   mov ecx, dword [si+0x28]
   sub ecx, eax
   mov bx, 0x8000
-  mov dl, [var_boot_drive]
+  mov dl, byte [var_boot_drive]
 
   ; Read from the disk!
   call readSectorsLBA
@@ -130,6 +130,11 @@ findPartition:
 
   mov si, str_good
   call printString
+
+  ; Preserve the Boot Drive, just in case
+  mov dl, byte [var_boot_drive]
+
+  ; Blast off!
   jmp 0:0x8000
 
 diskReadError:

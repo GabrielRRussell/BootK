@@ -28,6 +28,24 @@
 ; codeLabels are camelCase
 ; variable_and_data_labels are snake_case
 
+; Calculate Sector Number of Cluster
+; Input:  EAX = Cluster
+;          SI = Pointer to FAT
+;          DI = Pointer to BPB
+;          DX = Sectors per Cluster
+; Return: EAX = Sector
+getSectorFromCluster:
+  ; Preserve the original value in case it's needed
+  push dx
+  sub eax, 2
+  mul dx
+  ; Save our calculation for later
+  ; We need to calculate first data sector
+  push dx
+
+
+
+
 ; Values below are offsets. You can include them in your code by doing
 ; REG = [MBR], [REG+Offset] to properly access them
 ; At the end of each constant's name is the size.

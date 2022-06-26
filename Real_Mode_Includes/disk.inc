@@ -37,11 +37,11 @@ dap_lba_hi:       dd 0 ; only the low 48 bits are read.
 ;-------------------------------------------------------------------------------
 
 ; readSectorsLBA: Read Sectors using the int 13h extension for LBA operations
-; Will return AH = 0 on success, non-zero means failure.
-;  EAX: LBA to start reading from
-;   BX: Offset to load the sectors to
-;   CX: How many sectors to read
-;   DL: Drive Number
+; Will return CF set on error.
+; EAX: LBA to start reading from
+;  BX: Offset to load the sectors to
+;  CX: How many sectors to read
+;  DL: Drive Number
 readSectorsLBA:
   mov [dap_lba_lo], eax       ; Starting LBA to read from
   mov [dap_offset], bx        ; Store the offset to load the sectors at
