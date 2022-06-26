@@ -33,6 +33,7 @@
 ; At the end of each constant's name is the size.
 
 ; BIOS Parameter Block: 36 Bytes Long
+; These are offsets.
 bpb_oem_identifier_qword:     equ 0x03 ; Often ignored
 bpb_bytes_per_sector_word:    equ 0x0B
 bpb_sectors_per_cluster_byte: equ 0x0D
@@ -48,6 +49,7 @@ bpb_hidden_sectors_dword:     equ 0x1C ; Starting LBA of THIS partition
 bpb_large_sector_count_dword: equ 0x20
 
 ; Extended Boot Record FAT12|16: 26 Bytes Long
+; These are offsets.
 sf_ebr_drive_number_byte:       equ 0x24
 sf_ebr_reserved_nt_byte:        equ 0x25
 sf_ebr_signature_byte:          equ 0x26 ; Should be either 0x28 / 0x29
@@ -56,40 +58,59 @@ sf_ebr_volume_label_11b:        equ 0x2B ; Padded with spaces
 sf_ebr_sys_identifier_qword:    equ 0x36 ; Never trust contents of this
 
 ; Extended Boot Record FAT32: 90 Bytes Long
-f32_ebr_sectors_fat_dword:      equ 0x24
-f32_ebr_flags_word:             equ 0x28
-f32_ebr_fat_version_word:       equ 0x2A
-f32_ebr_c_num_rootdir_dword:    equ 0x2C ; Will probably be cluster 2
-f32_ebr_sector_fsinfo_word:     equ 0x30
-f32_ebr_sector_backup_word:     equ 0x32 ; LBA of the backup bootsector
-f32_ebr_null_reserved_12b:      equ 0x34
-f32_ebr_drive_number_byte:      equ 0x40
-f32_ebr_nt_reserved_byte:       equ 0x41
-f32_ebr_signature_byte:         equ 0x42 ; Should be either 0x28 / 0x29
-f32_ebr_volume_id_dword:        equ 0x43
-f32_ebr_volume_label_11b:       equ 0x47 ; Padded with spaces
-f32_ebr_system_string_qword:    equ 0x52 ; Always "FAT32   ", don't trust
+; These are offsets.
+f32_ebr_sectors_fat_dword:      equ 0x0024
+f32_ebr_flags_word:             equ 0x0028
+f32_ebr_fat_version_word:       equ 0x002A
+f32_ebr_c_num_rootdir_dword:    equ 0x002C ; Will probably be cluster 2
+f32_ebr_sector_fsinfo_word:     equ 0x0030
+f32_ebr_sector_backup_word:     equ 0x0032 ; LBA of the backup bootsector
+f32_ebr_null_reserved_12b:      equ 0x0034
+f32_ebr_drive_number_byte:      equ 0x0040
+f32_ebr_nt_reserved_byte:       equ 0x0041
+f32_ebr_signature_byte:         equ 0x0042 ; Should be either 0x28 / 0x29
+f32_ebr_volume_id_dword:        equ 0x0043
+f32_ebr_volume_label_11b:       equ 0x0047 ; Padded with spaces
+f32_ebr_system_string_qword:    equ 0x0502 ; Always "FAT32   ", don't trust
+
+; FSInfo Structure FAT32: 512 Bytes Long
+; These are offsets.
+fsinfo_lead_signature_dword:    equ 0x0000
+fsinfo_second_signature_dword:  equ 0x01E4
+fsinfo_free_clusters_dword:     equ 0x01E8
+fsinfo_first_free_cluster_dword:equ 0x01EC
+fsinfo_reserved_b12:            equ 0x01F0
+fsinfo_last_signature_dword:    equ 0x01FC
+
+; FSInfo Signatures FAT32
+; There are three signatures here. This is what they should equate to.
+; These are constants.
+fsinfo_sig_1st:                 equ 0x41615252 ; fsinfo_lead_signature_dword
+fsinfo_sig_2nd:                 equ 0x61417272 ; fsinfo_second_signature_dword
+fsinfo_sig_3rd:                 equ 0xAA550000 ; fsinfo_last_signature_dword
 
 ; 8.3 Directory Entry Format, 32 Bytes Long
-dir_filename_11b:               equ 0x00 ; 8.3 File Name, padded with spaces
-dir_attributes_byte:            equ 0x0B
-dir_reserved_byte:              equ 0x0C
-dir_ctime_total_byte:           equ 0x0D
-dir_ctime_word:                 equ 0x0E
-dir_cdate_word:                 equ 0x10
-dir_last_access_word:           equ 0x12
-dir_first_cluster_hi_word:      equ 0x14 ; This will always be zero on FAT12|16
-dir_last_mod_time_word:         equ 0x16
-dir_last_mod_date_word:         equ 0x18
-dir_first_cluster_lo_word:      equ 0x1A ; This is what you want!
-dir_file_size_bytes_dword:      equ 0x1C ; File size in bytes
+; These are offsets.
+dir_filename_11b:               equ 0x0000 ; 8.3 File Name, padded with spaces
+dir_attributes_byte:            equ 0x000B
+dir_reserved_byte:              equ 0x000C
+dir_ctime_total_byte:           equ 0x000D
+dir_ctime_word:                 equ 0x000E
+dir_cdate_word:                 equ 0x0010
+dir_last_access_word:           equ 0x0012
+dir_first_cluster_hi_word:      equ 0x0014 ; Always zero on FAT12 and FAT16
+dir_last_mod_time_word:         equ 0x0016
+dir_last_mod_date_word:         equ 0x0018
+dir_first_cluster_lo_word:      equ 0x001A ; This is what you want!
+dir_file_size_bytes_dword:      equ 0x001C ; File size in bytes
 
 ; LFN Directory Entry Format, 32 Bytes Long
-lfn_entry_order_byte:           equ 0x00
-lfn_five_characters_10b:        equ 0x01 ; First five characters of filename
-lfn_attribute_byte:             equ 0x0B ; Should always be 0x0F
-lfn_long_entry_type_byte:       equ 0x0C ; 0x00 for Name Entries
-lfn_short_checksum_byte:        equ 0x0D
-lfn_six_characters_12b:         equ 0x0E ; Middle six characters of entry
-lfn_null_word:                  equ 0x1A
-lfn_two_characters_dword:       equ 0x1C ; Last two characters of entry
+; These are offsets.
+lfn_entry_order_byte:           equ 0x0000
+lfn_five_characters_10b:        equ 0x0001 ; First five characters of filename
+lfn_attribute_byte:             equ 0x000B ; Should always be 0x0F
+lfn_long_entry_type_byte:       equ 0x000C ; 0x00 for Name Entries
+lfn_short_checksum_byte:        equ 0x000D
+lfn_six_characters_12b:         equ 0x000E ; Middle six characters of entry
+lfn_null_word:                  equ 0x001A
+lfn_two_characters_dword:       equ 0x001C ; Last two characters of entry
