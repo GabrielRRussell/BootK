@@ -46,7 +46,7 @@ setup:
   cli
 
   ; Set Data,Extra,Stack Segment Registers to 0
-  xor eax, eax
+  xor ax, ax
   mov ds, ax
   mov es, ax
   mov ss, ax
@@ -130,7 +130,7 @@ findPartition:
 
   mov si, str_good
   call printString
-  jmp halt
+  jmp 0:0x8000
 
 diskReadError:
   mov si, str_disk_read_error

@@ -13,22 +13,27 @@ GDB := gdb
 
 #If you edit the disk.sfdisk script then edit these values!
 # @TODO Automate this part. Tried to use XXD but didn't seem to work
+# Maybe grep the fdisk results? eh
 # FAT Partition Starting LBA, and Sector Count
+
+SPLBA := 2048
+SPSC  :=    8
 
 # There has GOT to be a better way to do this lmao
 FPLBA :=	 2056
 FPSC  := 131072
 
 # By default creates a 128MB disk with two partitions:
-# 1: 16MB FAT16 - build/system.part
-# 2: 64MB EXT2  - build/os.part
-build/disk.img: build/s0.bin build/system.part disk.sfdisk
+# 1: 4KB RAW - build/s1.bin
+# 2: 16MB FAT32- build/system.part
+build/disk.img: build/s0.bin build/s1.bin build/system.part disk.sfdisk
 	# Create the disk at the proper size, then format the partition table
 	touch $@
 	dd if=/dev/zero of=$@ bs=1M count=128
 	sfdisk $@ < disk.sfdisk
 	# Install the partitions, and the bootloader
 	dd if=build/s0.bin of=$@ bs=446 count=1 conv=notrunc
+	dd if=build/s1.bin of=$@ bs=512 count=${SPSC} seek=${SPLBA} conv=notrunc
 	dd if=build/system.part of=$@ bs=512 count=${FPSC} seek=${FPLBA} conv=notrunc
 
 # Build the Stage Zero MBR with NASM
@@ -37,9 +42,6 @@ build/s0.bin: Stage_Zero/s0.asm
 	nasm -f bin $< -o $@
 
 build/s1.bin: Stage_One/s1.asm
-	nasm -f bin $< -o $@
-
-build/s2.bin: Stage_Two/s2.asm
 	nasm -f bin $< -o $@
 
 # Build the FAT32 System Partition, and put a text file on it for testing
@@ -55,9 +57,6 @@ build/system.part: build/s1.bin build/s2.bin
 					 -D 0x80 \
 					 -h ${FPLBA} $@
 	mcopy -i $@ build/sample.txt ::/
-	mcopy -i $@ build/s2.bin ::/
-	dd if=build/s1.bin of=$@ bs=3 count=1 conv=notrunc
-	dd if=build/s1.bin of=$@ bs=1 count=450 seek=62 skip=62 conv=notrunc
 
 # Run the disk image
 test: build/disk.img
