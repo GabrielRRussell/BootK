@@ -28,131 +28,43 @@
 ; codeLabels are camelCase
 ; variable_and_data_labels are snake_case
 
-; 0x0000 - 0x03FF : IVT (1Kb) <-- Important later on, not right now
-; 0x0500 - 0x7BFF : Free Memory (~29.7Kb) <-- Setting up Stack here
-; 0x7C00 - 0x7DFF : Bootsector (512b) <-- YOU ARE HERE
-; 0x7E00 - 0x0007.FFFF : Free Memory (480.5Kb) <-- Loading Stage 2 Here
-
-; This time we're loading our copied MBR at 0x0000:0x7C00
+; This time we should be loaded to 0x0000:0x8000
 ; BIOS puts us in Real Mode (16 Bits), so we tell the assembler
-[org 0x7C00]
+[org 0x8000]
 [bits 16]
 
-jmp short start
-nop
-%include "Real_Mode_Includes/smallfat.inc"
+setup:
 
-start:
-  cli
-  ; Reset segment registers to 0x0000, just in case
-  xor eax, eax
+  ; Set Data,Extra,Stack Segment Registers to 0
+  xor ax, ax
   mov ds, ax
   mov es, ax
   mov ss, ax
 
-  ; Setup stack at 0x0000:0x7B00
-  mov bp, 0x7B00
+  ; Set up the stack / base pointer
+  mov bp, stack
   mov sp, bp
 
-  ; Spec Compliant bootloaders should pass us the drive number in DL
-  mov [var_boot_drive], dl
+  jmp 0:start
 
-  ; Active partition entry pointed to by SI
-  ; Store the starting LBA of this partition from the active partition entry
+; We reserve 1KB for the stack. Temporary bodge to test if our stage is actually
+; loaded properly, we'll put code right after this.
+stack: resb 1024
 
-  ; @TODO - Do I really want to keep it this way?
-  ; Might be better to read it from the FAT table that way this could be
-  ; compatible with other chainloaders. SI pointing to the partition entry isn't
-  ; guaranteed, so it might not be compatible with other chainloaders.
-  mov eax, dword [si+8]
-  mov [var_partition_lba], eax
-
-  ; We can restore interrupts now that setup is done
-  sti
-
-  ; Calculate size of FAT in Sectors
-  xor eax, eax
-  xor ecx, ecx
-  xor ebx, ebx
-  mov ax, word [bpb_sectors_per_fat]
-  mov bl, byte [bpb_total_fats]
-  mul bx
-
-  ; Find the start of the root directory
-  add  ax,  word [bpb_reserved_sectors]
-  add eax, dword [var_partition_lba]
-  xchg eax, ecx
-
-  ; Calculate how many sectors we need to load for the root directory
-  xor ebx, ebx
-  mov ax, word [bpb_root_dir_entries]
-  mov dx, 32
-  mul dx
-  add ax, word [bpb_bytes_per_sector]
-  dec ax
-  mov bx, word [bpb_bytes_per_sector]
-  xor edx, edx
-  div bx
-
-  ; Set values for load function
-  ; Load to 0x0000:0x8000
-  xchg eax, ecx
-  mov bx, 0x8000
-  mov dl, [var_boot_drive]
-  call readSectorsLBA
-
-  ; Compare the value in the entry until we find it
-  mov si, bx
-  mov di, str_s2_filename
-  mov cx, 11 ; Compare 11 Characters
-  mov dx, [bpb_root_dir_entries] ; Do this until we run out of entries
-
-findEntry:
-  call compareString
-  jne .next ; Nope, not it.
-  jmp .found ; Sweet, it worked!
-.next:
-  dec dx ; Have we run out of entries?
-  test dx, 0
-  jnz .fail ; Didn't find it
-  add si, 32 ; Go to the next entry
-  jmp findEntry
-.fail:
-  mov si, str_error
+start:
+  mov si, str_test
   call printString
   cli
   hlt
-.found:
-  ; Entry is stored at 0x0000:SI, grab the cluster number
-  xor eax, eax
-  xor ebx, ebx
-  ; Need to calculate bytes per cluster to add to DI each loop
-  ; We'll keep this in DX
-  mov ax, word [bpb_bytes_per_sector]
-  mov bl, byte [bpb_sectors_per_cluster]
-  mul bx
-  xchg ax, dx
-
-  ; Get the first cluster number
-  xor eax, eax
-  mov ax,  word [si+dir_first_cluster_lo]
-  ; Consolidate into one push
-  mov di, 0xA000
-  push 0xA000
-
 
 ; Includes
 %include "Real_Mode_Includes/string.inc"
 %include "Real_Mode_Includes/disk.inc"
 
 ; Constants, Strings, Variables
-var_boot_drive:     db 0
-var_partition_lba:  dd 0
-var_cluster_offset: dw 0
 str_s2_filename:    db "S2      BIN", 0
-str_error:          db "D", 0
+str_test:           db "This is a test string! You should see me right now!", 0
 str_good:           db "*", 0
 
-; Boot Signature
-times 510 - ($-$$) db 0
-dw 0xAA55
+; File Size Guard, can't get larger than 4KB
+times 4096 - ($-$$) db 0
