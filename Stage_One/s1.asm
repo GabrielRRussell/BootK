@@ -60,6 +60,7 @@ start:
 ; Includes
 %include "Real_Mode_Includes/string.inc"
 %include "Real_Mode_Includes/disk.inc"
+%include "Stage_One/fsfat.inc"
 
 ; Constants, Strings, Variables
 str_s2_filename:    db "S2      BIN", 0

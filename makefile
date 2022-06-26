@@ -74,9 +74,6 @@ debug: build/disk.img
 					 -ex "break *0x7C00" \
 					 -ex "c"
 
-hdtest: build/disk.img
-	echo ${FPLBA}
-
 # Everything made as part of the build process is left in build/
 clean:
 	rm -rf build/
