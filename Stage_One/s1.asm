@@ -49,7 +49,7 @@ setup:
 
 ; We reserve 1KB for the stack. Temporary bodge to test if our stage is actually
 ; loaded properly, we'll put code right after this.
-stack: resb 1024
+stack: times 1024 db 0
 
 start:
   mov si, str_test
