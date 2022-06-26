@@ -92,11 +92,34 @@ start:
   mov dl, byte [var_boot_drive]
   call readSectorsLBA
   jc diskReadError
-
   ; 2KB Loaded to 0x0500, read the first 16 sectors
-  ; Placeholder
-  cli
-  hlt
+
+findPartition:
+  ; We loaded our sectors to 0x0500
+  ; We only need to look through the first 16 entries until we find it.
+  mov bx, 16
+  mov di, 0x0500
+.loop:
+  ; Compare the identifier to what we're looking for.
+  mov si, const_stage1_signature
+  mov cx, 16
+  call compareString
+  je .exit
+  ; Have we run out of entries?
+  dec bx
+  jz .error
+  ; Load the next entry, every 128 Bytes
+  add di, 0x80
+  jmp .loop
+.error:
+  mov si, str_disk_missing_part
+  call printString
+  jmp halt
+.exit:
+  ; Identifier matched up, so we'll load it.
+  mov si, str_good
+  call printString
+  jmp halt
 
 diskReadError:
   mov si, str_disk_read_error
@@ -118,10 +141,12 @@ halt:
 
 ; Strings, Variables, Constants
 var_boot_drive:             db 0 ; We need to keep this for the kernel
-const_gpt_signature:        db 0x45, 0x46, 0x49, 0x20, 0x50, 0x41, 0x52, 0x54
-str_no_support_error:       db "ERROR! BIOS doesn't support extended int 10h", 0
-str_disk_read_error:        db "ERROR! Disk Read Error.", 0
-str_disk_format_error:      db "ERROR! Disk not GPT format.", 0
+const_gpt_signature:        db "EFI PART"
+const_stage1_signature:     db "Hah!IdontNeedEFI"
+str_no_support_error:       db "BIOS doesn't support extended int 10h", 0
+str_disk_read_error:        db "Disk Read Error.", 0
+str_disk_format_error:      db "Disk not GPT format.", 0
+str_disk_missing_part:      db "Missing System Partition", 0
 str_good:                   db "Stage 0 Finished!", 0xA, 0xD 0
 
 ; We don't care about anything before the partition entries

@@ -60,7 +60,7 @@ printRegister:
 ;-------------------------------------------------------------------------------
 ; Compare Two Strings located at SI, DI
 ; Bytes to scan in CX (THIS DOESN'T WORK WITH C-STRINGS)
-; ZF Clear if they don't match up
+; ZF Clear if the strings don't match
 compareString:
   pusha
   cld
