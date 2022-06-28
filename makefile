@@ -30,7 +30,7 @@ FPSC  = ${shell awk '/ESP/ {print $$7}' disk.sfdisk}
 build/disk.img: build/s0.bin build/s1.bin build/system.part disk.sfdisk
 	# Create the disk at the proper size, then format the partition table
 	touch $@
-	dd if=/dev/zero of=$@ bs=1M count=128
+	dd if=/dev/zero of=$@ bs=1M count=256
 	sfdisk $@ < disk.sfdisk
 
 	# Install the partitions, and the bootloader

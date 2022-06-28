@@ -78,7 +78,7 @@ findPartition:
 ; We found it!
 loadESPMBR:
 
-    ; Load the first sector of the partition to 0x9000, right above this code.
+  ; Load the first sector of the partition to 0x9000, right above this code.
   mov eax, dword [si+0x20]
   mov cx, 1
   mov bx, 0x9000
@@ -95,6 +95,12 @@ loadESPMBR:
 
 loadESPRootDir:
 
+  mov eax, 3
+  mov di, 0x9000
+  mov dl, byte [0x900D]
+  call getSectorFromCluster32
+  xchg eax, edx
+  call printRegister
 
 hang:
   cli
@@ -103,6 +109,7 @@ hang:
 
 ; Stack grows downwards
 ; We'll set up 512 bytes for our stack, we don't really need too much.
+align 8
 end_of_stack: times 511 db 0
 stack: db 0
 

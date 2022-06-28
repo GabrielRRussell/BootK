@@ -23,7 +23,7 @@ _____________
 # Other Info
 BootK is a 2 Stage Loader by default. Building the image will generate a 128MB disk image, that is formatted as GPT. BootK currently works only on BIOS machines, but will eventually include UEFI. BootK does not support MBR formatted disks. There will be two required partitions:
 1. RAW, 4KB - This is used to store the first stage for BIOS machines. GUID: 0x0000FEED
-2. FAT32, 64MB - This is the ESP for UEFI machines, and stores a config file for BootK.
+2. FAT32, 128MB - This is the ESP for UEFI machines, and stores a config file for BootK.
 
 The RAW partition is for BIOS systems to load the first stage of BootK, and must not be modified. It has no filesystem. The FAT32 partition is the EFI System Partition, and stores a configuration file that is loaded by BootK, and it will also eventually store the EFI executable used to load the OS on UEFI based systems. On BIOS machines, the Bootsector will load the raw executable from the first partition, and run it at 0x8000. The RAW partition must be recorded in the first 4 sectors of the partition entry table, for technical reasons.
 

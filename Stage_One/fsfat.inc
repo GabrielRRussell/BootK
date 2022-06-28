@@ -28,23 +28,47 @@
 ; codeLabels are camelCase
 ; variable_and_data_labels are snake_case
 
-; Calculate Sector Number of Cluster
+; findDataStartLBA32
+; Find the first data sector LBA in the BPB provided for FAT32
+; Input:    DI: Pointer to BPB
+; Output:  EAX: LBA of First Data Sector
+findDataStartLBA32:
+  ; Calculate size of FATs
+  push ebx
+  push edx
+
+  mov eax, dword [di+f32_ebr_sectors_fat_dword]
+  mov  bl,  byte [di+bpb_total_fats_byte]
+  and  bx, 0x00FF
+  mul  bx
+
+  ; Add hidden, reserved sectors, then return
+  add eax, dword [di+bpb_hidden_sectors_dword]
+  mov  bx,  word [di+bpb_reserved_sectors_word]
+  add eax, ebx
+
+  pop edx
+  pop ebx
+  ret
+
+; getSectorFromCluster32
+; Calculate Sector Number of Cluster for FAT32
 ; Input:  EAX = Cluster
-;          SI = Pointer to FAT
-;          DI = Pointer to BPB
+;          DI = Pointer to copy of BPB
 ;          DX = Sectors per Cluster
 ; Return: EAX = Sector
-getSectorFromCluster:
-  ; Preserve the original value in case it's needed
-  push dx
+getSectorFromCluster32:
+  ; Preserve the original value in case needed
+  push edx
   sub eax, 2
   mul dx
-  ; Save our calculation for later
-  ; We need to calculate first data sector
-  push dx
-
-
-
+  xchg eax, edx
+  ; Get the starting sector, add it to our calculation
+  call findDataStartLBA32
+  ; We have our result. Restore edx, and then return
+  add eax, edx
+  pop edx
+  ret
 
 ; Values below are offsets. You can include them in your code by doing
 ; REG = [MBR], [REG+Offset] to properly access them
