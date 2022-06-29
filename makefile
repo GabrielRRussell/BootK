@@ -71,7 +71,8 @@ debug: build/disk.img
 					 -ex "layout regs" \
 					 -ex "layout next" \
 					 -ex "set architecture i8086" \
-					 -ex "break *0x7C00" \
+					 -ex "b *0x7C00" \
+					 -ex "b *0x8000" \
 					 -ex "c"
 
 # Everything made as part of the build process is left in build/
