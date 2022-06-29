@@ -77,12 +77,28 @@ getSectorFromCluster32:
 ; loadClusterToOffset32
 ; Loads a full Cluster to an offset in memory at DS:DI
 ; Input:  EAX: Cluster Number to Load
-;          BX: Ptr to 512 Byte Region of Free Memory
+;          DL: Drive Number
 ;          DS: Segment to load cluster to
 ;          DI: Offset to Load Cluster to
 ;          SI: Ptr to copy of BPB
 loadClusterToOffset32:
+  pusha
 
+  ; Get the starting sector of the cluster, and how many sectors long it is.
+  call getSectorFromCluster32
+  xor cx, cx
+  mov cl, byte [si+bpb_sectors_per_cluster_byte]
+
+  ; Load the sectors to DS:DI
+  call readSectorsLBA
+
+  ; Return
+  popa
+  ret
+
+; loadFATSectorFromCluster32
+; Given a cluster number, loads the next part of the FAT necessary to find the next cluster number
+; or end of chain to memory.
 ; Input:  EAX: Cluster Number
 ;          SI: Ptr to copy of BPB
 ;          BX: Ptr to 512 Byte Region of Free Memory
@@ -107,7 +123,6 @@ loadFATSectorFromCluster32:
 
   popa
   ret
-
 
 ; Values below are offsets. You can include them in your code by doing
 ; REG = [MBR], [REG+Offset] to properly access them

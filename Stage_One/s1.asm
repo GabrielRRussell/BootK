@@ -94,21 +94,6 @@ loadESPMBR:
   jmp hang
 
 loadESPRootDir:
-  mov eax, 1
-  mov si, 0x9000
-  mov bx, fat_sector
-  mov dl, byte [var_boot_drive]
-  call loadFATSectorFromCluster32
-
-  mov cx, 16
-  mov si, fat_sector
-.loop:
-  mov dx, [si]
-  call printRegister
-  add si, 2
-  dec cx
-  jz hang
-  jmp .loop
 
 hang:
   cli
