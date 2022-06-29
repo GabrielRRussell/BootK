@@ -94,13 +94,52 @@ loadESPMBR:
   jmp hang
 
 loadESPRootDir:
-  mov eax, 3
+  ; Load it right above the bootsector in memory
   mov si, 0x9000
+  mov di, 0x9200
+
+  ; Get the cluster number of the root directory
+  mov eax, dword [si+f32_ebr_c_num_rootdir_dword]
   mov bx, fat_sector
-  mov dl, [var_boot_drive]
-  call findNextCluster32
+  mov dl, byte [var_boot_drive]
+  call loadClusterToOffset32
+
+  ; Calculate Bytes per Cluster
+  xor ax, ax
+  xor dx, dx
+  mov al, byte [si+bpb_sectors_per_cluster_byte] 
+  mov bx, word [si+bpb_bytes_per_sector_word]
+  mul bx 
+
+  ; Calculate number of directory entries, in EAX
+  mov bx, 32
+  div bx
   xchg eax, edx
-  call printRegister
+  mov di, str_conf_filename
+  mov si, 0x9200
+
+.loop:
+  ; Comparing 11 Characters
+  mov cx, 11
+  call compareString
+  je foundFolder
+
+  ; Not this one just yet
+  dec edx
+  jz .error
+  add si, 32
+  jmp .loop
+
+; Doesn't seem to exist, as of yet
+.error:
+  mov si, str_error_no_file
+  call printString 
+  jmp hang
+
+; We've found our entry!
+foundFolder:
+  mov si, str_good
+  call printString
 
 hang:
   cli
@@ -120,6 +159,7 @@ str_conf_filename:  db "CONFIG  BIN"
 str_found_esp:      db "Found the ESP.", 0xA, 0xD, 0
 str_good:           db "*", 0
 str_disk_read_error:db "Disk Read Error. ", 0
+str_error_no_file:  db "Could not find the config file.", 0
 str_error_no_esp:   db "There is no FAT32 ESP partition found on disk.", 0
 
 ; Stack grows downwards
