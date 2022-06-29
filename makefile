@@ -49,8 +49,8 @@ build/s1.bin: Stage_One/s1.asm
 # Build the FAT32 System Partition, and put a text file on it for testing
 build/system.part:
 	touch $@
-	touch build/sample.txt
-	echo "This is a sample txt file. See you in Stage 2!" >> build/sample.txt
+	touch build/config.bin
+	echo "This is a sample txt file. Hello World!" >> build/config.bin
 	dd if=/dev/zero of=$@ bs=512 count=${FPSC}
 	mkfs.fat -F 32 \
 					 -n KSPBOOT \
@@ -58,7 +58,7 @@ build/system.part:
 					 -i 0xDEADBEEF \
 					 -D 0x80 \
 					 -h ${FPLBA} $@
-	mcopy -i $@ build/sample.txt ::/
+	mcopy -i $@ build/config.bin ::/
 
 # Run the disk image
 test: build/disk.img

@@ -94,6 +94,13 @@ loadESPMBR:
   jmp hang
 
 loadESPRootDir:
+  mov eax, 3
+  mov si, 0x9000
+  mov bx, fat_sector
+  mov dl, [var_boot_drive]
+  call findNextCluster32
+  xchg eax, edx
+  call printRegister
 
 hang:
   cli
@@ -122,7 +129,8 @@ end_of_stack: times 127 db 0
 stack: db 0
 
 ; We're gonna load our FAT here, one sector at a time to reduce memory usage.
-fat_sector: times 512 db 0
+align 16
+fat_sector: times 512 db "a"
 
 ; File Size Guard, can't get larger than 4KB
 times 4096 - ($-$$) db 0

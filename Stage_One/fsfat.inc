@@ -124,6 +124,44 @@ loadFATSectorFromCluster32:
   popa
   ret
 
+; findNextCluster32
+; Given a cluster number, returns the next cluster number of the file, or end of chain.
+; Input:  EAX: Cluster Number
+;          SI: Ptr to copy of BPB
+;          BX: Ptr to 512 Byte Region of Free Memory
+;          DL: Boot Drive
+; Output: EAX: Next Cluster Number
+findNextCluster32:
+  call loadFATSectorFromCluster32
+  
+  ; Preserve values
+  push dx
+  push bx
+  push cx
+
+  ; Clear DX for Div. Calculate cluster offset into FAT Sector
+  xor dx, dx
+  mov cx, 128
+  div cx
+
+  mov ax, dx
+  mov cx, 4
+  mul cx
+
+  ; Record the next given cluster
+  add bx, ax
+
+  mov eax, [bx]
+
+  ; Ignore top 4 Bits. Only 28 bits are used in the FAT for FAT32
+  and eax, 0x0FFFFFFF
+
+  ; Restore Values, return
+  pop cx 
+  pop bx
+  pop dx
+  ret
+
 ; Values below are offsets. You can include them in your code by doing
 ; REG = [MBR], [REG+Offset] to properly access them
 ; At the end of each constant's name is the size.
