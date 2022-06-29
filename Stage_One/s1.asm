@@ -81,7 +81,7 @@ loadESPMBR:
   ; Load the first sector of the partition to 0x9000, right above this code.
   mov eax, dword [si+0x20]
   mov cx, 1
-  mov bx, 0x9000
+  mov di, 0x9000
   mov dl, byte [var_boot_drive]
   call readSectorsLBA
   jc .error
@@ -94,24 +94,25 @@ loadESPMBR:
   jmp hang
 
 loadESPRootDir:
+  mov eax, 1
+  mov si, 0x9000
+  mov bx, fat_sector
+  mov dl, byte [var_boot_drive]
+  call loadFATSectorFromCluster32
 
-  mov eax, 3
-  mov di, 0x9000
-  mov dl, byte [0x900D]
-  call getSectorFromCluster32
-  xchg eax, edx
+  mov cx, 16
+  mov si, fat_sector
+.loop:
+  mov dx, [si]
   call printRegister
+  add si, 2
+  dec cx
+  jz hang
+  jmp .loop
 
 hang:
   cli
   hlt
-
-
-; Stack grows downwards
-; We'll set up 512 bytes for our stack, we don't really need too much.
-align 8
-end_of_stack: times 511 db 0
-stack: db 0
 
 ; Includes
 %include "Real_Mode_Includes/string.inc"
@@ -119,7 +120,6 @@ stack: db 0
 %include "Stage_One/fsfat.inc"
 
 ; Constants, Strings, Variables
-; This is split into two lines to make it easier to read.
 var_boot_drive:     db 0
 var_esp_sig:        db 0x28, 0x73, 0x2a, 0xc1, 0x1f, 0xf8, 0xd2, 0x11
                     db 0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b
@@ -129,6 +129,15 @@ str_found_esp:      db "Found the ESP.", 0xA, 0xD, 0
 str_good:           db "*", 0
 str_disk_read_error:db "Disk Read Error. ", 0
 str_error_no_esp:   db "There is no FAT32 ESP partition found on disk.", 0
+
+; Stack grows downwards
+; We'll set up 128 bytes for our stack, we don't really need too much.
+align 2
+end_of_stack: times 127 db 0
+stack: db 0
+
+; We're gonna load our FAT here, one sector at a time to reduce memory usage.
+fat_sector: times 512 db 0
 
 ; File Size Guard, can't get larger than 4KB
 times 4096 - ($-$$) db 0

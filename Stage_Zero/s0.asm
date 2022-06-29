@@ -67,7 +67,7 @@ setup:
 start:
   ; Loading LBA 1 (Partition Table Header) to 0x0000:0x0500
   mov eax, 1
-  mov bx, 0x0500
+  mov di, 0x0500
   mov cx, 1
   mov dl, byte [var_boot_drive]
   call readSectorsLBA
@@ -87,7 +87,7 @@ start:
   ; @TODO: Change this to something more efficient once we get past POC stage.
 
   mov ax, [0x0548]
-  mov bx, 0x0500
+  mov di, 0x0500
   mov cx, 4
   mov dl, byte [var_boot_drive]
   call readSectorsLBA
@@ -121,7 +121,7 @@ findPartition:
   mov eax, dword [si+0x20]
   mov ecx, dword [si+0x28]
   sub ecx, eax
-  mov bx, 0x8000
+  mov di, 0x8000
   mov dl, byte [var_boot_drive]
 
   ; Read from the disk!

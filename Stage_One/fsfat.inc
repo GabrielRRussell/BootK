@@ -30,21 +30,21 @@
 
 ; findDataStartLBA32
 ; Find the first data sector LBA in the BPB provided for FAT32
-; Input:    DI: Pointer to BPB
+; Input:    SI: Pointer to BPB
 ; Output:  EAX: LBA of First Data Sector
 findDataStartLBA32:
   ; Calculate size of FATs
   push ebx
   push edx
+  xor ebx, ebx
 
-  mov eax, dword [di+f32_ebr_sectors_fat_dword]
-  mov  bl,  byte [di+bpb_total_fats_byte]
-  and  bx, 0x00FF
+  mov eax, dword [si+f32_ebr_sectors_fat_dword]
+  mov  bl,  byte [si+bpb_total_fats_byte]
   mul  bx
 
   ; Add hidden, reserved sectors, then return
-  add eax, dword [di+bpb_hidden_sectors_dword]
-  mov  bx,  word [di+bpb_reserved_sectors_word]
+  add eax, dword [si+bpb_hidden_sectors_dword]
+  mov  bx,  word [si+bpb_reserved_sectors_word]
   add eax, ebx
 
   pop edx
@@ -53,13 +53,17 @@ findDataStartLBA32:
 
 ; getSectorFromCluster32
 ; Calculate Sector Number of Cluster for FAT32
-; Input:  EAX = Cluster
-;          DI = Pointer to copy of BPB
-;          DX = Sectors per Cluster
-; Return: EAX = Sector
+; Input:  EAX: Cluster
+;          SI: Ptr to copy of BPB
+; Return: EAX: Sector
 getSectorFromCluster32:
   ; Preserve the original value in case needed
   push edx
+  xor edx, edx
+
+  ; Get the number of sectors per cluster
+  mov dl, byte [si+bpb_sectors_per_cluster_byte]
+
   sub eax, 2
   mul dx
   xchg eax, edx
@@ -69,6 +73,41 @@ getSectorFromCluster32:
   add eax, edx
   pop edx
   ret
+
+; loadClusterToOffset32
+; Loads a full Cluster to an offset in memory at DS:DI
+; Input:  EAX: Cluster Number to Load
+;          BX: Ptr to 512 Byte Region of Free Memory
+;          DS: Segment to load cluster to
+;          DI: Offset to Load Cluster to
+;          SI: Ptr to copy of BPB
+loadClusterToOffset32:
+
+; Input:  EAX: Cluster Number
+;          SI: Ptr to copy of BPB
+;          BX: Ptr to 512 Byte Region of Free Memory
+;          DL: Boot Drive
+loadFATSectorFromCluster32:
+  pusha
+  push dx
+  xor dx, dx
+  ; Find the sector offset
+  ; EAX= Sector Offset
+  ; We have to preserve DL
+  mov cx, 128
+  div cx
+  pop dx
+
+  add  ax,  word [si+bpb_reserved_sectors_word]
+  add eax, dword [si+bpb_hidden_sectors_dword]
+  mov cx, 1
+
+  xchg di, bx
+  call readSectorsLBA
+
+  popa
+  ret
+
 
 ; Values below are offsets. You can include them in your code by doing
 ; REG = [MBR], [REG+Offset] to properly access them
