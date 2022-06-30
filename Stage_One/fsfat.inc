@@ -162,6 +162,53 @@ findNextCluster32:
   pop dx
   ret
 
+; findEntryInDirectory32
+; Will return the cluster of a requested entry in AX. 
+; Sets Carry Flag if entry cannot be found.
+; Does not support LFN entries, only 8.3 entries
+; Input:   DI: Ptr to 11 Character String
+;          SI: Ptr to copy of entries
+;          DX: Number of Entries to Scan
+; Output: EAX: Cluster Number of Found Entry
+;          CF: Set on File Not Found
+findEntryInDirectory32:
+  ; Preserve values
+  push cx 
+  push dx
+  push si 
+.loop:
+  ; We need to compare 11 Characters
+  mov cx, 11
+  call compareString
+  je .found
+
+  ; Have we run out of entries?
+  dec dx
+  jz .not_found
+
+  ; Move to the next entry
+  add si, 32
+  jmp .loop
+
+; We found the entry
+.found:
+  ; Record the cluster number, clear CF, and then return
+  mov ax, [si+dir_first_cluster_lo_word]
+  shl eax, 16
+  mov ax, [si+dir_first_cluster_hi_word]
+  clc
+  jmp .exit
+
+; Looks like we've ran out. Make sure to set the carry flag.
+.not_found:
+  stc
+
+.exit:
+  pop si
+  pop dx
+  pop cx
+  ret
+
 ; Values below are offsets. You can include them in your code by doing
 ; REG = [MBR], [REG+Offset] to properly access them
 ; At the end of each constant's name is the size.

@@ -94,13 +94,16 @@ loadESPMBR:
   jmp hang
 
 loadESPRootDir:
+  ; Print a message stating we've found the ESP
+  mov si, str_found_esp
+  call printString
+
   ; Load it right above the bootsector in memory
   mov si, 0x9000
   mov di, 0x9200
 
   ; Get the cluster number of the root directory
   mov eax, dword [si+f32_ebr_c_num_rootdir_dword]
-  mov bx, fat_sector
   mov dl, byte [var_boot_drive]
   call loadClusterToOffset32
 
@@ -114,31 +117,22 @@ loadESPRootDir:
   ; Calculate number of directory entries, in EAX
   mov bx, 32
   div bx
+
+  ; We're going to scan the entries for our directory
   xchg eax, edx
-  mov di, str_conf_filename
+  mov di, str_folder_name
   mov si, 0x9200
+  call findEntryInDirectory32
+  jnc foundFolder
 
-.loop:
-  ; Comparing 11 Characters
-  mov cx, 11
-  call compareString
-  je foundFolder
-
-  ; Not this one just yet
-  dec edx
-  jz .error
-  add si, 32
-  jmp .loop
-
-; Doesn't seem to exist, as of yet
-.error:
-  mov si, str_error_no_file
-  call printString 
+  ; Looks like we didn't find it
+  mov si, str_error_no_folder
+  call printString
   jmp hang
 
 ; We've found our entry!
 foundFolder:
-  mov si, str_good
+  mov si, str_found_folder
   call printString
 
 hang:
@@ -154,11 +148,12 @@ hang:
 var_boot_drive:     db 0
 var_esp_sig:        db 0x28, 0x73, 0x2a, 0xc1, 0x1f, 0xf8, 0xd2, 0x11
                     db 0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b
-str_folder_name:    db "BootK      "
+str_folder_name:    db "BOOTK      "
 str_conf_filename:  db "CONFIG  BIN"
 str_found_esp:      db "Found the ESP.", 0xA, 0xD, 0
-str_good:           db "*", 0
+str_found_folder:   db "Found ESP://BOOTK/", 0xA, 0xD, 0
 str_disk_read_error:db "Disk Read Error. ", 0
+str_error_no_folder:db "Could not find ESP://BootK/", 0
 str_error_no_file:  db "Could not find the config file.", 0
 str_error_no_esp:   db "There is no FAT32 ESP partition found on disk.", 0
 

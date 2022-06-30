@@ -58,7 +58,8 @@ build/system.part:
 					 -i 0xDEADBEEF \
 					 -D 0x80 \
 					 -h ${FPLBA} $@
-	mcopy -i $@ build/config.bin ::/
+	mmd -i $@ ::/BOOTK
+	mcopy -i $@ build/config.bin ::/BOOTK/
 
 # Run the disk image
 test: build/disk.img
