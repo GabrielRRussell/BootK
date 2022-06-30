@@ -194,8 +194,12 @@ findEntryInDirectory32:
 .found:
   ; Record the cluster number, clear CF, and then return
   mov ax, [si+dir_first_cluster_lo_word]
-  shl eax, 16
-  mov ax, [si+dir_first_cluster_hi_word]
+  mov dx, [si+dir_first_cluster_hi_word]
+  add eax, edx 
+
+  ; Ignore top 4 Bits. Only 28 bits are used in the FAT for FAT32
+  and eax, 0x0FFFFFFF
+
   clc
   jmp .exit
 

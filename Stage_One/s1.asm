@@ -120,6 +120,10 @@ loadESPRootDir:
 
   ; We're going to scan the entries for our directory
   xchg eax, edx
+
+  ; Save this for later
+  push edx
+
   mov di, str_folder_name
   mov si, 0x9200
   call findEntryInDirectory32
@@ -130,10 +134,39 @@ loadESPRootDir:
   call printString
   jmp hang
 
-; We've found our entry!
+; We've found our entry! Cluster stored in EAX
 foundFolder:
+  ; Notify the user
   mov si, str_found_folder
   call printString
+
+  ; Load the first cluster of the folder to 0x9200 in memory
+  mov dl, byte [var_boot_drive]
+  mov di, 0x9200
+  mov si, 0x9000
+  call loadClusterToOffset32
+
+  ; Prepare inputs for scanning function
+  mov di, str_conf_filename
+  mov si, 0x9200
+  
+  ; Told you we'd need this! Number of entries to scan.
+  pop edx
+
+  ; Okay, let's scan again for the file this time.
+  call findEntryInDirectory32
+  jnc foundConfig
+
+  ; So the config doesn't seem to exist.
+  mov si, str_error_no_config
+  call printString
+  jmp hang
+
+; We've found our config as well! Cluster stored in EAX
+foundConfig:
+  mov si, str_found_config
+  call printString
+
 
 hang:
   cli
@@ -152,9 +185,10 @@ str_folder_name:    db "BOOTK      "
 str_conf_filename:  db "CONFIG  BIN"
 str_found_esp:      db "Found the ESP.", 0xA, 0xD, 0
 str_found_folder:   db "Found ESP://BOOTK/", 0xA, 0xD, 0
+str_found_config:   db "Found ESP://BOOTK/CONFIG.BIN", 0xA, 0xD, 0
 str_disk_read_error:db "Disk Read Error. ", 0
-str_error_no_folder:db "Could not find ESP://BootK/", 0
-str_error_no_file:  db "Could not find the config file.", 0
+str_error_no_folder:db "Could not find ESP://BOOTK/", 0
+str_error_no_config:  db "Could not find ESP://BOOTK/CONFIG.BIN.", 0
 str_error_no_esp:   db "There is no FAT32 ESP partition found on disk.", 0
 
 ; Stack grows downwards
